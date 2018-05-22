@@ -4,13 +4,15 @@ import (
 	"context"
 
 	"github.com/coldze/memzie/engines/store"
+	"github.com/coldze/mongo-go-driver/bson"
 	"github.com/coldze/mongo-go-driver/bson/objectid"
 	mgo "github.com/coldze/mongo-go-driver/mongo"
 	"github.com/coldze/primitives/custom_error"
-	"github.com/coldze/mongo-go-driver/bson"
 )
 
 type collection struct {
+	dbName     string
+	collName   string
 	collection *mgo.Collection
 }
 
@@ -33,7 +35,7 @@ func (c *collection) FindOne(decoder store.Decoder, id string, additionalFilters
 	if customErr == nil {
 		return value, nil
 	}
-	return nil, custom_error.NewErrorf(customErr, "Failed to decode.")
+	return nil, custom_error.NewErrorf(customErr, "Failed to decode. Collname: %v. Db-name: %v", c.collName, c.dbName)
 }
 
 func (c *collection) FindAll(decoder store.Decoder, filter map[string]interface{}, processor func(res interface{}) (bool, custom_error.CustomError)) custom_error.CustomError {
@@ -110,6 +112,7 @@ func (c *collection) Delete(id string, additionalFilters map[string]interface{})
 		return false, custom_error.MakeErrorf("Failed to convert id. Error: %v", err)
 	}
 	ctx := context.Background()
+
 	filter := additionalFilters
 	if filter == nil {
 		filter = map[string]interface{}{}
@@ -136,6 +139,8 @@ func NewCollection(client *mgo.Client, dbName string, collectionName string) (st
 		return nil, custom_error.MakeErrorf("Collection is nil")
 	}
 	return &collection{
+		dbName:     dbName,
+		collName:   collectionName,
 		collection: coll,
 	}, nil
 }

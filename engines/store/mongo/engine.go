@@ -29,12 +29,6 @@ type BoardsFactory func(id string, engine store.Engine) (store.Boards, custom_er
 type BoardFactory func(board *structs.Board, engine store.Engine) (store.Board, custom_error.CustomError)
 type WordFactory func(word *structs.Word, engine store.Engine) (store.Word, custom_error.CustomError)
 
-func NewWordFactory() WordFactory {
-	return func(word *structs.Word, engine store.Engine) (store.Word, custom_error.CustomError) {
-		return nil, custom_error.MakeErrorf("Not implemented")
-	}
-}
-
 func NewBoardsFactory(factory BoardFactory) BoardsFactory {
 	return func(id string, engine store.Engine) (store.Boards, custom_error.CustomError) {
 		hexID, err := objectid.FromHex(id)
@@ -155,7 +149,7 @@ func (b *boardsImpl) Delete(id string) custom_error.CustomError {
 	if err == nil {
 		return nil
 	}
-	return custom_error.NewErrorf(err, "Failed to delete: %v", id)
+	return custom_error.NewErrorf(err, "Failed to delete board: %v", id)
 }
 
 func NewEngine(url string, dbName string) (store.Engine, custom_error.CustomError) {

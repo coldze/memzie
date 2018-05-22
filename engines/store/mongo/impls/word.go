@@ -2,6 +2,7 @@ package impls
 
 import (
 	"github.com/coldze/memzie/engines/store"
+	"github.com/coldze/memzie/engines/store/mongo"
 	"github.com/coldze/memzie/engines/store/mongo/structs"
 	"github.com/coldze/primitives/custom_error"
 )
@@ -29,4 +30,15 @@ func (w *wordImpl) List(handle store.TranslationHandle) custom_error.CustomError
 		}
 	}
 	return nil
+}
+
+func NewWordFactory() mongo.WordFactory {
+	return func(word *structs.Word, engine store.Engine) (store.Word, custom_error.CustomError) {
+		if word == nil {
+			return nil, custom_error.MakeErrorf("Failed to wrap word. Data is nil.")
+		}
+		return &wordImpl{
+			data: word,
+		}, nil
+	}
 }
