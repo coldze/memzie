@@ -11,10 +11,9 @@ import (
 const words_collection = "words"
 
 type boardImpl struct {
-	data    *structs.Board
-	words   store.Collection
-	factory mongo.WordFactory
-	engine  store.Engine
+	data        *structs.Board
+	words       store.Collection
+	factory     mongo.WordFactory
 }
 
 func decodeWord(decode func(interface{}) error) (interface{}, custom_error.CustomError) {
@@ -43,7 +42,7 @@ func (b *boardImpl) List(handle store.WordListHandle) custom_error.CustomError {
 		if !ok {
 			return false, custom_error.MakeErrorf("Failed to convert input. Unexpected type: %T", decoded)
 		}
-		obj, err := b.factory(typed, b.engine)
+		obj, err := b.factory(typed)
 		if err != nil {
 			return false, custom_error.NewErrorf(err, "Failed to create word wrap.")
 		}
@@ -61,15 +60,23 @@ func (b *boardImpl) List(handle store.WordListHandle) custom_error.CustomError {
 }
 
 func (b *boardImpl) Get(id string) (store.Word, custom_error.CustomError) {
-	decoded, err := b.words.FindOne(decodeWord, id, map[string]interface{}{"client_id": b.data.ClientID})
+	unhexID, err := objectid.FromHex(id)
 	if err != nil {
-		return nil, custom_error.NewErrorf(err, "Failed to get word from collection.")
+		return nil, custom_error.MakeErrorf("Failed to convert id. Error: %v", err)
+	}
+	filter := map[string]interface{}{
+		"_id":       unhexID,
+		"client_id": b.data.ClientID,
+	}
+	decoded, customErr := b.words.FindOne(decodeWord, filter)
+	if err != nil {
+		return nil, custom_error.NewErrorf(customErr, "Failed to get word from collection.")
 	}
 	typed, ok := decoded.(*structs.Word)
 	if !ok {
 		return nil, custom_error.MakeErrorf("Failed to decode. Unexpected type: %T", decoded)
 	}
-	res, customErr := b.factory(typed, b.engine)
+	res, customErr := b.factory(typed)
 	if customErr == nil {
 		return res, nil
 	}
@@ -96,7 +103,7 @@ func (b *boardImpl) Create(params *store.WordCreateParams) (store.Word, custom_e
 	if err != nil {
 		return nil, custom_error.MakeErrorf("Failed to convert new object id. Error: %v", err)
 	}
-	res, customErr := b.factory(&object, b.engine)
+	res, customErr := b.factory(&object)
 	if customErr == nil {
 		return res, nil
 	}
@@ -104,19 +111,27 @@ func (b *boardImpl) Create(params *store.WordCreateParams) (store.Word, custom_e
 }
 
 func (b *boardImpl) Delete(id string) custom_error.CustomError {
-	_, err := b.words.Delete(id, map[string]interface{}{"client_id": b.data.ClientID})
-	if err == nil {
+	unhexID, err := objectid.FromHex(id)
+	if err != nil {
+		return custom_error.MakeErrorf("Failed to convert id. Error: %v", err)
+	}
+	filter := map[string]interface{}{
+		"_id":       unhexID,
+		"client_id": b.data.ClientID,
+	}
+	_, customErr := b.words.Delete(filter)
+	if customErr == nil {
 		return nil
 	}
-	return custom_error.NewErrorf(err, "Failed to delete word: %v", id)
+	return custom_error.NewErrorf(customErr, "Failed to delete word: %v", id)
 }
 
-func NewBoardFactory(factory mongo.WordFactory) mongo.BoardFactory {
-	return func(board *structs.Board, engine store.Engine) (store.Board, custom_error.CustomError) {
+func NewBoardFactory(factory mongo.WordFactory, collFactory mongo.CollectionFactory) mongo.BoardFactory {
+	return func(board *structs.Board) (store.Board, custom_error.CustomError) {
 		if board == nil {
 			return nil, custom_error.MakeErrorf("Failed to wrap board. Data is nil.")
 		}
-		coll, customErr := engine.GetCollection(words_collection)
+		coll, customErr := collFactory(words_collection)
 		if customErr != nil {
 			return nil, custom_error.NewErrorf(customErr, "Failed to get '%v' collection.", words_collection)
 		}

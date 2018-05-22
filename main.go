@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"github.com/coldze/memzie/engines/store"
 	"github.com/coldze/memzie/engines/store/mongo"
 	"github.com/coldze/memzie/engines/store/mongo/impls"
+	mgo "github.com/coldze/mongo-go-driver/mongo"
 	"github.com/coldze/primitives/custom_error"
 	"github.com/mongodb/mongo-go-driver/bson/objectid"
 	"log"
 	"time"
-	"github.com/coldze/memzie/engines/store"
 )
 
 type BoardData struct {
@@ -84,16 +86,19 @@ func (b *BoardImpl) Save(data interface{}) custom_error.CustomError {
 }
 
 func main() {
-	storeEngine, customErr := mongo.NewEngine("mongodb://localhost:27030", "memzie")
-	if customErr != nil {
-		log.Fatalf("Failed to create engine. Error: %v", customErr)
+	ctx := context.Background()
+	client, err := mgo.Connect(ctx, "mongodb://localhost:27030", nil)
+	if err != nil {
+		log.Fatalf("Failed to connect to mongo-db. Error: %v", err)
 	}
-	defer storeEngine.Close()
+	defer client.Disconnect(ctx)
 
-	wordFactory := mongo.NewWordFactory()
-	boardFactory := impls.NewBoardFactory(wordFactory)
-	boardsFactory := mongo.NewBoardsFactory(boardFactory)
-	root, customErr := mongo.NewRoot(storeEngine, boardsFactory)
+	collFactory := mongo.NewCollectionFactory(client, "memzie")
+
+	wordFactory := impls.NewWordFactory()
+	boardFactory := impls.NewBoardFactory(wordFactory, collFactory)
+	boardsFactory := mongo.NewBoardsFactory(boardFactory, collFactory)
+	root, customErr := mongo.NewRoot(collFactory, boardsFactory)
 	if customErr != nil {
 		log.Fatalf("Failed to create root. Error: %v", customErr)
 	}
@@ -106,8 +111,8 @@ func main() {
 	if boards == nil {
 		log.Fatalf("Boards are nil.")
 	}
-	//boardID := "5b0254287126f07bd05e369f"
-	board, customErr := /*boards.Get(boardID) */boards.Create("TEST_BOARD", "TEST BOARD DESCRIPTION")
+	boardID := "5b0254287126f07bd05e369f"
+	board, customErr := boards.Get(boardID) // boards.Create("TEST_BOARD", "TEST BOARD DESCRIPTION")
 	if customErr != nil {
 		log.Fatalf("Failed to create board. Error: %v", customErr)
 	}
@@ -120,7 +125,7 @@ func main() {
 	}
 	log.Printf("BoardID: '%v'", board.GetID())
 	newWord := &store.WordCreateParams{
-		Text: "test",
+		Text:         "test",
 		Translations: []string{"test", "Test", "tEstT"},
 	}
 	word, customErr := board.Create(newWord)

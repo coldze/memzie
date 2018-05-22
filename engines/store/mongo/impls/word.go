@@ -33,7 +33,7 @@ func (w *wordImpl) List(handle store.TranslationHandle) custom_error.CustomError
 }
 
 func NewWordFactory() mongo.WordFactory {
-	return func(word *structs.Word, engine store.Engine) (store.Word, custom_error.CustomError) {
+	return func(word *structs.Word) (store.Word, custom_error.CustomError) {
 		if word == nil {
 			return nil, custom_error.MakeErrorf("Failed to wrap word. Data is nil.")
 		}
