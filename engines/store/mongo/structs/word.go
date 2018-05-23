@@ -8,6 +8,8 @@ type Word struct {
 	BoardID      objectid.ObjectID `bson:"board_id"`
 	Text         string            `bson:"text"`
 	Translations []string          `bson:"translations"`
-	Count        int               `bson:"count"`
-	LastShow     int64             `bson:"last_shown_unix_nano"`
+	Weight       int64             `bson:"weight"`
+	ShownTimes   int64             `bson:"shown_times"`
+	Fails        int64             `bson:"fails"`
+	LastAnswered int64             `bson:"last_answered_unix_nano"`
 }

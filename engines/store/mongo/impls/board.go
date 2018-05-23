@@ -8,15 +8,13 @@ import (
 	"github.com/coldze/primitives/custom_error"
 )
 
-const words_collection = "words"
-
 type boardImpl struct {
-	data        *structs.Board
-	words       store.Collection
-	factory     mongo.WordFactory
+	data    *structs.Board
+	words   store.Collection
+	factory mongo.WordFactory
 }
 
-func decodeWord(decode func(interface{}) error) (interface{}, custom_error.CustomError) {
+func DecodeWord(decode func(interface{}) error) (interface{}, custom_error.CustomError) {
 	res := structs.Word{}
 	err := decode(&res)
 	if err != nil {
@@ -52,7 +50,7 @@ func (b *boardImpl) List(handle store.WordListHandle) custom_error.CustomError {
 		}
 		return next, nil
 	}
-	err := b.words.FindAll(decodeWord, map[string]interface{}{"client_id": b.data.ClientID}, collectBoards)
+	err := b.words.FindAll(DecodeWord, map[string]interface{}{"client_id": b.data.ClientID}, collectBoards)
 	if err == nil {
 		return nil
 	}
@@ -68,7 +66,7 @@ func (b *boardImpl) Get(id string) (store.Word, custom_error.CustomError) {
 		"_id":       unhexID,
 		"client_id": b.data.ClientID,
 	}
-	decoded, customErr := b.words.FindOne(decodeWord, filter)
+	decoded, customErr := b.words.FindOne(DecodeWord, filter)
 	if err != nil {
 		return nil, custom_error.NewErrorf(customErr, "Failed to get word from collection.")
 	}
@@ -131,9 +129,9 @@ func NewBoardFactory(factory mongo.WordFactory, collFactory mongo.CollectionFact
 		if board == nil {
 			return nil, custom_error.MakeErrorf("Failed to wrap board. Data is nil.")
 		}
-		coll, customErr := collFactory(words_collection)
+		coll, customErr := collFactory(WORDS_COLLECTION)
 		if customErr != nil {
-			return nil, custom_error.NewErrorf(customErr, "Failed to get '%v' collection.", words_collection)
+			return nil, custom_error.NewErrorf(customErr, "Failed to get '%v' collection.", WORDS_COLLECTION)
 		}
 		if customErr != nil {
 			return nil, custom_error.NewErrorf(customErr, "Failed to create board wrap.")

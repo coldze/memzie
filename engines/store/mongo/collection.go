@@ -10,13 +10,13 @@ import (
 	"github.com/coldze/primitives/custom_error"
 )
 
-type collectionWrap struct {
+type CollectionWrap struct {
 	dbName     string
 	collName   string
 	collection *mgo.Collection
 }
 
-func (c *collectionWrap) findOne(decoder store.Decoder, filter map[string]interface{}, opts ...options.FindOneOptioner) (interface{}, custom_error.CustomError) {
+func (c *CollectionWrap) FindOne(decoder store.Decoder, filter map[string]interface{}, opts ...options.FindOneOptioner) (interface{}, custom_error.CustomError) {
 	ctx := context.Background()
 	res := c.collection.FindOne(ctx, filter, opts...)
 	if res == nil {
@@ -29,7 +29,7 @@ func (c *collectionWrap) findOne(decoder store.Decoder, filter map[string]interf
 	return nil, custom_error.NewErrorf(customErr, "Failed to decode. Collname: %v. Db-name: %v", c.collName, c.dbName)
 }
 
-func (c *collectionWrap) findAll(decoder store.Decoder, processor func(res interface{}) (bool, custom_error.CustomError), filter map[string]interface{}, opts ...options.FindOptioner) custom_error.CustomError {
+func (c *CollectionWrap) FindAll(decoder store.Decoder, processor func(res interface{}) (bool, custom_error.CustomError), filter map[string]interface{}, opts ...options.FindOptioner) custom_error.CustomError {
 	ctx := context.Background()
 	cursor, err := c.collection.Find(ctx, filter, opts...)
 	if err != nil {
@@ -59,7 +59,7 @@ func (c *collectionWrap) findAll(decoder store.Decoder, processor func(res inter
 	return nil
 }
 
-func (c *collectionWrap) create(object interface{}, opts ...options.InsertOneOptioner) (resObjID string, resErr custom_error.CustomError) {
+func (c *CollectionWrap) Create(object interface{}, opts ...options.InsertOneOptioner) (resObjID string, resErr custom_error.CustomError) {
 	defer func() {
 		r := recover()
 		if r == nil {
@@ -97,7 +97,7 @@ func (c *collectionWrap) create(object interface{}, opts ...options.InsertOneOpt
 	return val.ObjectID().Hex(), nil
 }
 
-func (c *collectionWrap) delete(filter map[string]interface{}, opts ...options.DeleteOptioner) (bool, custom_error.CustomError) {
+func (c *CollectionWrap) Delete(filter map[string]interface{}, opts ...options.DeleteOptioner) (bool, custom_error.CustomError) {
 	ctx := context.Background()
 	res, err := c.collection.DeleteOne(ctx, filter, opts...)
 	if err != nil {
@@ -110,20 +110,31 @@ func (c *collectionWrap) delete(filter map[string]interface{}, opts ...options.D
 	return res.DeletedCount > 0, nil
 }
 
+func (c *CollectionWrap) Update(update interface{}, filter map[string]interface{}, opts ...options.UpdateOptioner) (bool, custom_error.CustomError) {
+	res, err := c.collection.UpdateOne(context.Background(), filter, map[string]interface{}{"$set": update}, opts...)
+	if err != nil {
+		return false, custom_error.MakeErrorf("Failed to update. Error: %v", err)
+	}
+	if res == nil {
+		return false, custom_error.MakeErrorf("Update result is nil")
+	}
+	return res.ModifiedCount > 0, nil
+}
+
 type collection struct {
-	underlying *collectionWrap
+	underlying *CollectionWrap
 }
 
 func (c *collection) FindOne(decoder store.Decoder, filter map[string]interface{}) (interface{}, custom_error.CustomError) {
-	res, customErr := c.underlying.findOne(decoder, filter)
+	res, customErr := c.underlying.FindOne(decoder, filter)
 	if customErr != nil {
-		return nil, custom_error.NewErrorf(customErr, "Failed to findOne.")
+		return nil, custom_error.NewErrorf(customErr, "Failed to FindOne.")
 	}
 	return res, nil
 }
 
 func (c *collection) FindAll(decoder store.Decoder, filter map[string]interface{}, processor func(res interface{}) (bool, custom_error.CustomError)) custom_error.CustomError {
-	customErr := c.underlying.findAll(decoder, processor, filter)
+	customErr := c.underlying.FindAll(decoder, processor, filter)
 	if customErr != nil {
 		return custom_error.NewErrorf(customErr, "Failed to find all.")
 	}
@@ -131,7 +142,7 @@ func (c *collection) FindAll(decoder store.Decoder, filter map[string]interface{
 }
 
 func (c *collection) Create(object interface{}) (resObjID string, resErr custom_error.CustomError) {
-	res, err := c.underlying.create(object)
+	res, err := c.underlying.Create(object)
 	if err != nil {
 		return "", custom_error.NewErrorf(err, "Failed to insert.")
 	}
@@ -139,65 +150,34 @@ func (c *collection) Create(object interface{}) (resObjID string, resErr custom_
 }
 
 func (c *collection) Delete(filter map[string]interface{}) (bool, custom_error.CustomError) {
-	res, customErr := c.underlying.delete(filter)
+	res, customErr := c.underlying.Delete(filter)
 	if customErr != nil {
 		return false, custom_error.NewErrorf(customErr, "Failed to remove.")
 	}
 	return res, nil
 }
 
-type logicCollection struct {
-	underlying *collectionWrap
-	sort       *bson.Document
-}
-
-func (c *logicCollection) FindOne(decoder store.Decoder, filter map[string]interface{}) (interface{}, custom_error.CustomError) {
-	res, customErr := c.underlying.findOne(decoder, filter, options.OptSort{
-		Sort: c.sort,
-	})
+func (c *collection) Update(object interface{}, filter map[string]interface{}) (bool, custom_error.CustomError) {
+	res, customErr := c.underlying.Update(object, filter)
 	if customErr != nil {
-		return nil, custom_error.NewErrorf(customErr, "Failed to findOne.")
+		return false, custom_error.NewErrorf(customErr, "Failed to update.")
 	}
 	return res, nil
 }
 
-func (c *logicCollection) FindAll(decoder store.Decoder, filter map[string]interface{}, processor func(res interface{}) (bool, custom_error.CustomError)) custom_error.CustomError {
-	return custom_error.MakeErrorf("Should not be called.")
-}
-
-func (c *logicCollection) Create(object interface{}) (resObjID string, resErr custom_error.CustomError) {
-	return "", custom_error.MakeErrorf("Should not be called.")
-}
-
-func (c *logicCollection) Delete(id string, additionalFilters map[string]interface{}) (bool, custom_error.CustomError) {
-	return false, custom_error.MakeErrorf("Should not be called.")
-}
-
 func NewCollectionFactory(client *mgo.Client, dbName string) func(collName string) (store.Collection, custom_error.CustomError) {
 	return func(collectionName string) (store.Collection, custom_error.CustomError) {
-		db := client.Database(dbName)
-		if db == nil {
-			return nil, custom_error.MakeErrorf("DB is nil")
-		}
-		coll := db.Collection(collectionName)
-		if coll == nil {
-			return nil, custom_error.MakeErrorf("Collection is nil")
+		wrap, err := NewCollectionWrap(client, dbName, collectionName)
+		if err != nil {
+			return nil, custom_error.NewErrorf(err, "Failed to create wrap.")
 		}
 		return &collection{
-			underlying: &collectionWrap{
-				dbName:     dbName,
-				collName:   collectionName,
-				collection: coll,
-			},
+			underlying: wrap,
 		}, nil
 	}
 }
 
-func NewLogicCollection(client *mgo.Client, dbName string, collectionName string, sortOrder map[string]interface{}) (store.Collection, custom_error.CustomError) {
-	/*sortDoc*/ _, err := mgo.TransformDocument(sortOrder)
-	if err != nil {
-		return nil, custom_error.MakeErrorf("Failed to convert sort order. Error: %v", err)
-	}
+func NewCollectionWrap(client *mgo.Client, dbName string, collectionName string) (*CollectionWrap, custom_error.CustomError) {
 	db := client.Database(dbName)
 	if db == nil {
 		return nil, custom_error.MakeErrorf("DB is nil")
@@ -206,13 +186,9 @@ func NewLogicCollection(client *mgo.Client, dbName string, collectionName string
 	if coll == nil {
 		return nil, custom_error.MakeErrorf("Collection is nil")
 	}
-	/*return &logicCollection{
-		underlying: &collectionWrap{
-			dbName:     dbName,
-			collName:   collectionName,
-			collection: coll,
-			sort:       sortDoc,
-		},
-	}, nil*/
-	return nil, custom_error.MakeErrorf("Not implemented.")
+	return &CollectionWrap{
+		dbName:     dbName,
+		collName:   collectionName,
+		collection: coll,
+	}, nil
 }
