@@ -42,9 +42,9 @@ type TranslationHandle func(translation string) (bool, custom_error.CustomError)
 type Word interface {
 	GetText() string
 	GetID() string
-	GetWeight() int64
+	GetWeight() float64
 	GetShownTimes() int64
 	GetFails() int64
 	List(handle TranslationHandle) custom_error.CustomError
-	Update(update int64, failed bool) custom_error.CustomError
+	Update(update float64, failed bool) custom_error.CustomError
 }

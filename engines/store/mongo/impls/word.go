@@ -1,11 +1,12 @@
 package impls
 
 import (
+	"time"
+
 	"github.com/coldze/memzie/engines/store"
 	"github.com/coldze/memzie/engines/store/mongo"
 	"github.com/coldze/memzie/engines/store/mongo/structs"
 	"github.com/coldze/primitives/custom_error"
-	"time"
 )
 
 type wordImpl struct {
@@ -21,7 +22,7 @@ func (w *wordImpl) GetID() string {
 	return w.data.ID.Hex()
 }
 
-func (w *wordImpl) GetWeight() int64 {
+func (w *wordImpl) GetWeight() float64 {
 	return w.data.Weight
 }
 
@@ -46,9 +47,9 @@ func (w *wordImpl) List(handle store.TranslationHandle) custom_error.CustomError
 	return nil
 }
 
-func (w *wordImpl) Update(weightChange int64, failed bool) custom_error.CustomError {
+func (w *wordImpl) Update(weightChange float64, failed bool) custom_error.CustomError {
 	w.data.ShownTimes++
-	w.data.Weight += weightChange
+	w.data.Weight -= 0.001 * weightChange
 	w.data.LastAnswered = time.Now().UnixNano()
 	if failed {
 		w.data.Fails++

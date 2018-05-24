@@ -91,6 +91,7 @@ func (b *boardImpl) Create(params *store.WordCreateParams) (store.Word, custom_e
 		Text:         params.Text,
 		Translations: params.Translations,
 		ID:           objectid.New(),
+		Weight:       1.0,
 	}
 	id, customErr := b.words.Create(object)
 	if customErr != nil {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/coldze/memzie/engines/logic/mongo"
 	"github.com/coldze/memzie/engines/store"
 	"github.com/coldze/memzie/engines/store/mongo"
@@ -11,8 +12,9 @@ import (
 	"github.com/coldze/primitives/custom_error"
 	"github.com/mongodb/mongo-go-driver/bson/objectid"
 	"log"
-	"time"
 	"math/rand"
+	"strings"
+	"time"
 )
 
 type BoardData struct {
@@ -137,7 +139,7 @@ func main() {
 		"test_08": "тест_08",
 		"test_09": "тест_09",
 	}
-
+	tests := map[string]string{}
 	for k, v := range dummies {
 		w, customErr := board.Create(&store.WordCreateParams{
 			Text: k,
@@ -149,6 +151,7 @@ func main() {
 			log.Fatalf("Failed to create word. %v, %v. Error: %v", k, v, customErr)
 		}
 		log.Printf("Created word: %v", w.GetID())
+		tests[k] = v
 	}
 
 	/*wordsCollection, customErr := collFactory(impls.WORDS_COLLECTION)
@@ -160,19 +163,51 @@ func main() {
 	if customErr != nil {
 		log.Fatalf("Failed to create logic. Error: %v", customErr)
 	}
-
+	tests["test_01"] = "asd"
 
 	for {
 		word, customErr := logic.Next()
 		if customErr != nil {
 			log.Fatalf("Failed to get next word. Error: %v", customErr)
 		}
-		log.Printf("WordID: %v.          ID: %v", word.GetText(), word.GetID())
-		customErr = word.Update(10 + (rand.Int63() % 10) - 5, false)
+		//log.Printf("WordID: %v.          ID: %v", word.GetText(), word.GetID())
+		var translation string
+		//fmt.Printf("New word: %v\n", word.GetText())
+		//fmt.Scanf("%s\n", &translation)
+		//log.Printf("%s", translation)
+		translation = tests[word.GetText()]
+		strings.ToLower(strings.Trim(translation, " "))
+		var correct *bool = new(bool)
+		*correct = false
+		word.List(func(valid string) (bool, custom_error.CustomError) {
+			*correct = strings.ToLower(strings.Trim(valid, " ")) == translation
+			return !*correct, nil
+		})
+		word.GetWeight()
+		//x0, x1
+		//x1/x0
+
+		shown := float64(word.GetShownTimes()) + 1
+		fails := float64(word.GetFails())
+
+		var res string
+		if *correct {
+			res = "Correct. Step: "
+		} else {
+			res = "Incorrect. Step: "
+			fails += 1.0
+		}
+		step := float64(0.999) + rand.Float64() / 10000.0  - fails / shown / 1000
+		if !*correct && (rand.Int63() % 100) < 5 {
+			step = 0.0
+		}
+		res += fmt.Sprintf("%v. Fails: %v, Shown: %v, Div: %v", step, int64(fails), int64(shown), fails/shown/1000)
+		//fmt.Println(res)
+		customErr = word.Update(step, !*correct)
 		if customErr != nil {
 			log.Fatalf("Failed to update word. Error: %v", customErr)
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	/*log.Printf("BoardID: '%v'", board.GetID())

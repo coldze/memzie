@@ -82,7 +82,7 @@ func NewLogic(client *mgo.Client, dbName string, collectionName string, boardID 
 		clientID:   unhexClientID,
 		boardID:    unhexBoardID,
 		underlying: wrap,
-		sort:       bson.NewDocument(bson.EC.Int64("weight", 1)),
+		sort:       bson.NewDocument(bson.EC.Int64("weight", -1)),
 		decoder:    impls.DecodeWord,
 		factory:    factory,
 	}, nil
