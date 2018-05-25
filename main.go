@@ -4,17 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/coldze/memzie/engines/logic/mongo"
-	"github.com/coldze/memzie/engines/store"
-	"github.com/coldze/memzie/engines/store/mongo"
-	"github.com/coldze/memzie/engines/store/mongo/impls"
-	mgo "github.com/coldze/mongo-go-driver/mongo"
-	"github.com/coldze/primitives/custom_error"
-	"github.com/mongodb/mongo-go-driver/bson/objectid"
 	"log"
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/coldze/memzie/engines/logic/mongo"
+	"github.com/coldze/memzie/engines/store"
+	"github.com/coldze/memzie/engines/store/mongo"
+	"github.com/coldze/memzie/engines/store/mongo/impls"
+	"github.com/coldze/primitives/custom_error"
+	"github.com/mongodb/mongo-go-driver/bson/objectid"
+	mgo "github.com/mongodb/mongo-go-driver/mongo"
 )
 
 type BoardData struct {
@@ -197,8 +198,8 @@ func main() {
 			res = "Incorrect. Step: "
 			fails += 1.0
 		}
-		step := float64(0.999) + rand.Float64() / 10000.0  - fails / shown / 1000
-		if !*correct && (rand.Int63() % 100) < 5 {
+		step := float64(0.999) + rand.Float64()/10000.0 - fails/shown/1000
+		if !*correct && (rand.Int63()%100) < 5 {
 			step = 0.0
 		}
 		res += fmt.Sprintf("%v. Fails: %v, Shown: %v, Div: %v", step, int64(fails), int64(shown), fails/shown/1000)

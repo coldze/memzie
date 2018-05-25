@@ -1,6 +1,6 @@
 package structs
 
-import "github.com/coldze/mongo-go-driver/bson/objectid"
+import "github.com/mongodb/mongo-go-driver/bson/objectid"
 
 type Board struct {
 	ID          objectid.ObjectID `bson:"_id"`

@@ -6,11 +6,11 @@ import (
 	mgo_store "github.com/coldze/memzie/engines/store/mongo"
 	"github.com/coldze/memzie/engines/store/mongo/impls"
 	"github.com/coldze/memzie/engines/store/mongo/structs"
-	"github.com/coldze/mongo-go-driver/bson"
-	"github.com/coldze/mongo-go-driver/bson/objectid"
-	"github.com/coldze/mongo-go-driver/core/options"
-	mgo "github.com/coldze/mongo-go-driver/mongo"
 	"github.com/coldze/primitives/custom_error"
+	"github.com/mongodb/mongo-go-driver/bson"
+	"github.com/mongodb/mongo-go-driver/bson/objectid"
+	"github.com/mongodb/mongo-go-driver/core/option"
+	mgo "github.com/mongodb/mongo-go-driver/mongo"
 )
 
 type logicCollection struct {
@@ -48,7 +48,7 @@ func (c *logicCollection) Next() (store.Word, custom_error.CustomError) {
 		"client_id": c.clientID,
 		"board_id":  c.boardID,
 	}
-	res, customErr := c.underlying.FindOne(c.decoder, filter, options.OptSort{
+	res, customErr := c.underlying.FindOne(c.decoder, filter, option.OptSort{
 		Sort: c.sort,
 	})
 	if customErr != nil {

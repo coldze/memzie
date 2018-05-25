@@ -4,8 +4,8 @@ import (
 	"github.com/coldze/memzie/engines/store"
 	"github.com/coldze/memzie/engines/store/mongo"
 	"github.com/coldze/memzie/engines/store/mongo/structs"
-	"github.com/coldze/mongo-go-driver/bson/objectid"
 	"github.com/coldze/primitives/custom_error"
+	"github.com/mongodb/mongo-go-driver/bson/objectid"
 )
 
 type boardsImpl struct {
