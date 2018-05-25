@@ -8,15 +8,15 @@ type Engine interface {
 }
 
 type Root interface {
-	GetBoards(clientID string) (Boards, custom_error.CustomError)
+	GetFolders(clientID string) (Folders, custom_error.CustomError)
 }
 
-type BoardListHandle func(Board) (bool, custom_error.CustomError)
+type FolderListHandle func(Folder) (bool, custom_error.CustomError)
 
-type Boards interface {
-	List(handle BoardListHandle) custom_error.CustomError
-	Get(id string) (Board, custom_error.CustomError)
-	Create(name string, description string) (Board, custom_error.CustomError)
+type Folders interface {
+	List(handle FolderListHandle) custom_error.CustomError
+	Get(id string) (Folder, custom_error.CustomError)
+	Create(name string, description string) (Folder, custom_error.CustomError)
 	Delete(id string) custom_error.CustomError
 }
 
@@ -27,7 +27,7 @@ type WordCreateParams struct {
 	Translations []string
 }
 
-type Board interface {
+type Folder interface {
 	GetName() string
 	GetDescription() string
 	GetID() string

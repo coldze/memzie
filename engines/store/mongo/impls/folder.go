@@ -8,8 +8,8 @@ import (
 	"github.com/mongodb/mongo-go-driver/bson/objectid"
 )
 
-type boardImpl struct {
-	data    *structs.Board
+type folderImpl struct {
+	data    *structs.Folder
 	words   store.Collection
 	factory mongo.WordFactory
 }
@@ -23,19 +23,19 @@ func DecodeWord(decode func(interface{}) error) (interface{}, custom_error.Custo
 	return &res, nil
 }
 
-func (b *boardImpl) GetName() string {
+func (b *folderImpl) GetName() string {
 	return b.data.Name
 }
 
-func (b *boardImpl) GetDescription() string {
+func (b *folderImpl) GetDescription() string {
 	return b.data.Description
 }
-func (b *boardImpl) GetID() string {
+func (b *folderImpl) GetID() string {
 	return b.data.ID.Hex()
 }
 
-func (b *boardImpl) List(handle store.WordListHandle) custom_error.CustomError {
-	collectBoards := func(decoded interface{}) (bool, custom_error.CustomError) {
+func (b *folderImpl) List(handle store.WordListHandle) custom_error.CustomError {
+	collectFolders := func(decoded interface{}) (bool, custom_error.CustomError) {
 		typed, ok := decoded.(*structs.Word)
 		if !ok {
 			return false, custom_error.MakeErrorf("Failed to convert input. Unexpected type: %T", decoded)
@@ -50,14 +50,14 @@ func (b *boardImpl) List(handle store.WordListHandle) custom_error.CustomError {
 		}
 		return next, nil
 	}
-	err := b.words.FindAll(DecodeWord, map[string]interface{}{"client_id": b.data.ClientID}, collectBoards)
+	err := b.words.FindAll(DecodeWord, map[string]interface{}{"client_id": b.data.ClientID}, collectFolders)
 	if err == nil {
 		return nil
 	}
 	return custom_error.NewErrorf(err, "Failed to list words.")
 }
 
-func (b *boardImpl) Get(id string) (store.Word, custom_error.CustomError) {
+func (b *folderImpl) Get(id string) (store.Word, custom_error.CustomError) {
 	unhexID, err := objectid.FromHex(id)
 	if err != nil {
 		return nil, custom_error.MakeErrorf("Failed to convert id. Error: %v", err)
@@ -81,13 +81,13 @@ func (b *boardImpl) Get(id string) (store.Word, custom_error.CustomError) {
 	return nil, custom_error.NewErrorf(customErr, "Failed to create wrap.")
 }
 
-func (b *boardImpl) Create(params *store.WordCreateParams) (store.Word, custom_error.CustomError) {
+func (b *folderImpl) Create(params *store.WordCreateParams) (store.Word, custom_error.CustomError) {
 	if params == nil {
 		return nil, custom_error.MakeErrorf("Failed to create word. Empty params.")
 	}
 	object := structs.Word{
 		ClientID:     b.data.ClientID,
-		BoardID:      b.data.ID,
+		FolderID:     b.data.ID,
 		Text:         params.Text,
 		Translations: params.Translations,
 		ID:           objectid.New(),
@@ -109,7 +109,7 @@ func (b *boardImpl) Create(params *store.WordCreateParams) (store.Word, custom_e
 	return nil, custom_error.NewErrorf(customErr, "Failed to create wrap word's object.")
 }
 
-func (b *boardImpl) Delete(id string) custom_error.CustomError {
+func (b *folderImpl) Delete(id string) custom_error.CustomError {
 	unhexID, err := objectid.FromHex(id)
 	if err != nil {
 		return custom_error.MakeErrorf("Failed to convert id. Error: %v", err)
@@ -125,20 +125,20 @@ func (b *boardImpl) Delete(id string) custom_error.CustomError {
 	return custom_error.NewErrorf(customErr, "Failed to delete word: %v", id)
 }
 
-func NewBoardFactory(factory mongo.WordFactory, collFactory mongo.CollectionFactory) mongo.BoardFactory {
-	return func(board *structs.Board) (store.Board, custom_error.CustomError) {
-		if board == nil {
-			return nil, custom_error.MakeErrorf("Failed to wrap board. Data is nil.")
+func NewFolderFactory(factory mongo.WordFactory, collFactory mongo.CollectionFactory) mongo.FolderFactory {
+	return func(folder *structs.Folder) (store.Folder, custom_error.CustomError) {
+		if folder == nil {
+			return nil, custom_error.MakeErrorf("Failed to wrap folder. Data is nil.")
 		}
 		coll, customErr := collFactory(WORDS_COLLECTION)
 		if customErr != nil {
 			return nil, custom_error.NewErrorf(customErr, "Failed to get '%v' collection.", WORDS_COLLECTION)
 		}
 		if customErr != nil {
-			return nil, custom_error.NewErrorf(customErr, "Failed to create board wrap.")
+			return nil, custom_error.NewErrorf(customErr, "Failed to create folder wrap.")
 		}
-		return &boardImpl{
-			data:    board,
+		return &folderImpl{
+			data:    folder,
 			words:   coll,
 			factory: factory,
 		}, nil

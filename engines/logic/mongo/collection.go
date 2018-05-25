@@ -17,7 +17,7 @@ type logicCollection struct {
 	underlying *mgo_store.CollectionWrap
 	sort       *bson.Document
 	clientID   objectid.ObjectID
-	boardID    objectid.ObjectID
+	folderID   objectid.ObjectID
 	decoder    store.Decoder
 	factory    mgo_store.WordFactory
 }
@@ -29,7 +29,7 @@ func (c *logicCollection) Get(id string) (store.Word, custom_error.CustomError) 
 	}
 	filter := map[string]interface{}{
 		"client_id": c.clientID,
-		"board_id":  c.boardID,
+		"folder_id": c.folderID,
 		"_id":       unhexWordID,
 	}
 	res, customErr := c.underlying.FindOne(c.decoder, filter)
@@ -46,7 +46,7 @@ func (c *logicCollection) Get(id string) (store.Word, custom_error.CustomError) 
 func (c *logicCollection) Next() (store.Word, custom_error.CustomError) {
 	filter := map[string]interface{}{
 		"client_id": c.clientID,
-		"board_id":  c.boardID,
+		"folder_id": c.folderID,
 	}
 	res, customErr := c.underlying.FindOne(c.decoder, filter, option.OptSort{
 		Sort: c.sort,
@@ -65,12 +65,12 @@ func (c *logicCollection) Next() (store.Word, custom_error.CustomError) {
 	return word, nil
 }
 
-func NewLogic(client *mgo.Client, dbName string, collectionName string, boardID string, clientID string, factory mgo_store.WordFactory) (logic.Logic, custom_error.CustomError) {
+func NewLogic(client *mgo.Client, dbName string, collectionName string, folderID string, clientID string, factory mgo_store.WordFactory) (logic.Logic, custom_error.CustomError) {
 	wrap, customErr := mgo_store.NewCollectionWrap(client, dbName, collectionName)
 	if customErr != nil {
 		return nil, custom_error.NewErrorf(customErr, "Failed to create wrap.")
 	}
-	unhexBoardID, err := objectid.FromHex(boardID)
+	unhexFolderID, err := objectid.FromHex(folderID)
 	if err != nil {
 		return nil, custom_error.MakeErrorf("Failed to convert board ID. Error: %v", err)
 	}
@@ -80,7 +80,7 @@ func NewLogic(client *mgo.Client, dbName string, collectionName string, boardID 
 	}
 	return &logicCollection{
 		clientID:   unhexClientID,
-		boardID:    unhexBoardID,
+		folderID:   unhexFolderID,
 		underlying: wrap,
 		sort:       bson.NewDocument(bson.EC.Int64("weight", -1)),
 		decoder:    impls.DecodeWord,

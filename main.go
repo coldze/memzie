@@ -18,7 +18,7 @@ import (
 	mgo "github.com/mongodb/mongo-go-driver/mongo"
 )
 
-type BoardData struct {
+type FolderData struct {
 	ID           objectid.ObjectID  `bson:"_id"`
 	Name         string             `bson:"Name"`
 	Description  string             `bson:"Description"`
@@ -32,15 +32,15 @@ type WordData struct {
 	LastShown time.Time         `bson:"last_shown"`
 }
 
-type BoardAssignedData struct {
-	BoardID objectid.ObjectID `bson:"board_id"`
+type FolderAssignedData struct {
+	FolderID objectid.ObjectID `bson:"folder_id"`
 	Data    interface{}       `bson:"data"`
 }
 
 type Question interface {
 }
 
-type Board interface {
+type Folder interface {
 	GetName() string
 	GetDescription() string
 	NextQuestion() Question
@@ -48,7 +48,7 @@ type Board interface {
 	AddQuestion(q Question) custom_error.CustomError
 }
 
-type BoardImpl struct {
+type FolderImpl struct {
 	id           objectid.ObjectID
 	name         string
 	description  string
@@ -56,30 +56,30 @@ type BoardImpl struct {
 	questions    []Question
 }
 
-func (b *BoardImpl) GetName() string {
+func (b *FolderImpl) GetName() string {
 	return b.name
 }
 
-func (b *BoardImpl) GetDescription() string {
+func (b *FolderImpl) GetDescription() string {
 	return b.description
 }
 
-func (b *BoardImpl) NextQuestion() Question {
+func (b *FolderImpl) NextQuestion() Question {
 	return nil
 }
 
-func (b *BoardImpl) CurrentQuestion() Question {
+func (b *FolderImpl) CurrentQuestion() Question {
 	return b.lastQuestion
 }
 
-func (b *BoardImpl) AddQuestion(q Question) custom_error.CustomError {
+func (b *FolderImpl) AddQuestion(q Question) custom_error.CustomError {
 	b.questions = append(b.questions, q)
 	return nil
 }
 
-func (b *BoardImpl) Save(data interface{}) custom_error.CustomError {
-	d := BoardAssignedData{
-		BoardID: b.id,
+func (b *FolderImpl) Save(data interface{}) custom_error.CustomError {
+	d := FolderAssignedData{
+		FolderID: b.id,
 		Data:    data,
 	}
 	v, err := json.MarshalIndent(d, "", "   ")
@@ -101,32 +101,32 @@ func main() {
 	collFactory := mongo.NewCollectionFactory(client, "memzie")
 
 	wordFactory := impls.NewWordFactory(collFactory)
-	boardFactory := impls.NewBoardFactory(wordFactory, collFactory)
-	boardsFactory := impls.NewBoardsFactory(boardFactory, collFactory)
-	root, customErr := impls.NewRoot(collFactory, boardsFactory)
+	folderFactory := impls.NewFolderFactory(wordFactory, collFactory)
+	foldersFactory := impls.NewFoldersFactory(folderFactory, collFactory)
+	root, customErr := impls.NewRoot(collFactory, foldersFactory)
 	if customErr != nil {
 		log.Fatalf("Failed to create root. Error: %v", customErr)
 	}
 	clientID := "5b025428ea5e7904880aa3be" //objectid.New().Hex()
 	log.Printf("ClientID: '%v'", clientID)
-	boards, customErr := root.GetBoards(clientID)
+	folders, customErr := root.GetFolders(clientID)
 	if customErr != nil {
-		log.Fatalf("Failed to get boards wrap. Error: %v", customErr)
+		log.Fatalf("Failed to get folders wrap. Error: %v", customErr)
 	}
-	if boards == nil {
-		log.Fatalf("Boards are nil.")
+	if folders == nil {
+		log.Fatalf("Folders are nil.")
 	}
-	boardID := "5b0254287126f07bd05e369f"
-	board, customErr := boards.Get(boardID) // boards.Create("TEST_BOARD", "TEST BOARD DESCRIPTION")
+	folderID := "5b0254287126f07bd05e369f"
+	folder, customErr := folders.Get(folderID) // folders.Create("TEST_FOLDER", "TEST FOLDER DESCRIPTION")
 	if customErr != nil {
-		log.Fatalf("Failed to create board. Error: %v", customErr)
+		log.Fatalf("Failed to create folder. Error: %v", customErr)
 	}
-	customErr = boards.List(func(board store.Board) (bool, custom_error.CustomError) {
-		log.Printf("BOARD: %v. Name: %v", board.GetID(), board.GetName())
+	customErr = folders.List(func(folder store.Folder) (bool, custom_error.CustomError) {
+		log.Printf("FOLDER: %v. Name: %v", folder.GetID(), folder.GetName())
 		return true, nil
 	})
 	if customErr != nil {
-		log.Fatalf("Failed to list boards. Error: %v", customErr)
+		log.Fatalf("Failed to list folders. Error: %v", customErr)
 	}
 
 	dummies := map[string]string{
@@ -142,7 +142,7 @@ func main() {
 	}
 	tests := map[string]string{}
 	for k, v := range dummies {
-		w, customErr := board.Create(&store.WordCreateParams{
+		w, customErr := folder.Create(&store.WordCreateParams{
 			Text: k,
 			Translations: []string{
 				v,
@@ -160,7 +160,7 @@ func main() {
 		log.Fatalf("Failed to get words collection. Error: %v", customErr)
 	}*/
 
-	logic, customErr := mongo2.NewLogic(client, "memzie", impls.WORDS_COLLECTION, board.GetID(), clientID, wordFactory)
+	logic, customErr := mongo2.NewLogic(client, "memzie", impls.WORDS_COLLECTION, folder.GetID(), clientID, wordFactory)
 	if customErr != nil {
 		log.Fatalf("Failed to create logic. Error: %v", customErr)
 	}
@@ -211,12 +211,12 @@ func main() {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	/*log.Printf("BoardID: '%v'", board.GetID())
+	/*log.Printf("FolderID: '%v'", folder.GetID())
 	newWord := &store.WordCreateParams{
 		Text:         "test",
 		Translations: []string{"test", "Test", "tEstT"},
 	}
-	word, customErr := board.Create(newWord)
+	word, customErr := folder.Create(newWord)
 	if customErr != nil {
 		log.Fatalf("Failed to create word. Error: %v", customErr)
 	}
@@ -233,7 +233,7 @@ func main() {
 	os.Exit(1)
 
 	return
-	board := BoardImpl{
+	folder := FolderImpl{
 		id:           objectid.New(),
 		name:         "name_Test",
 		description:  "desc_test",
@@ -246,5 +246,5 @@ func main() {
 		Valid:     0,
 		LastShown: time.Time{},
 	}
-	board.Save(word)*/
+	folder.Save(word)*/
 }

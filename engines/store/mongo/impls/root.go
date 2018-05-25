@@ -8,26 +8,26 @@ import (
 
 type root struct {
 	collFactory mongo.CollectionFactory
-	boards      store.Collection
-	factory     mongo.BoardsFactory
+	folders     store.Collection
+	factory     mongo.FoldersFactory
 }
 
-func (b *root) GetBoards(clientID string) (store.Boards, custom_error.CustomError) {
-	boards, err := b.factory(clientID)
+func (b *root) GetFolders(clientID string) (store.Folders, custom_error.CustomError) {
+	folders, err := b.factory(clientID)
 	if err != nil {
-		return nil, custom_error.NewErrorf(err, "Failed to get boards")
+		return nil, custom_error.NewErrorf(err, "Failed to get folders")
 	}
-	return boards, nil
+	return folders, nil
 }
 
-func NewRoot(collFactory mongo.CollectionFactory, factory mongo.BoardsFactory) (store.Root, custom_error.CustomError) {
-	c, err := collFactory(BOARDS_COLLECTION)
+func NewRoot(collFactory mongo.CollectionFactory, factory mongo.FoldersFactory) (store.Root, custom_error.CustomError) {
+	c, err := collFactory(FOLDERS_COLLECTION)
 	if err != nil {
 		return nil, custom_error.NewErrorf(err, "Failed to create new root.")
 	}
 	return &root{
 		collFactory: collFactory,
-		boards:      c,
+		folders:     c,
 		factory:     factory,
 	}, nil
 }
