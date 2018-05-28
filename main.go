@@ -13,9 +13,11 @@ import (
 	"github.com/coldze/memzie/engines/store"
 	"github.com/coldze/memzie/engines/store/mongo"
 	"github.com/coldze/memzie/engines/store/mongo/impls"
+	"github.com/coldze/memzie/interfaces/rpc"
 	"github.com/coldze/primitives/custom_error"
 	"github.com/mongodb/mongo-go-driver/bson/objectid"
 	mgo "github.com/mongodb/mongo-go-driver/mongo"
+	"net/http"
 )
 
 type FolderData struct {
@@ -34,7 +36,7 @@ type WordData struct {
 
 type FolderAssignedData struct {
 	FolderID objectid.ObjectID `bson:"folder_id"`
-	Data    interface{}       `bson:"data"`
+	Data     interface{}       `bson:"data"`
 }
 
 type Question interface {
@@ -80,7 +82,7 @@ func (b *FolderImpl) AddQuestion(q Question) custom_error.CustomError {
 func (b *FolderImpl) Save(data interface{}) custom_error.CustomError {
 	d := FolderAssignedData{
 		FolderID: b.id,
-		Data:    data,
+		Data:     data,
 	}
 	v, err := json.MarshalIndent(d, "", "   ")
 	if err != nil {
@@ -90,7 +92,75 @@ func (b *FolderImpl) Save(data interface{}) custom_error.CustomError {
 	return nil
 }
 
+type TestSA struct {
+	FieldStr string      `json:"field_str"`
+	Field    interface{} `json:"field"`
+}
+
+type TestSubSB struct {
+	FA string `json:"fa"`
+	FB string `json:"fb"`
+}
+
+type TestSB struct {
+	FieldStr string    `json:"field_str"`
+	Field    TestSubSB `json:"field"`
+}
+
+func Create() interface{} {
+	return &TestSubSB{}
+}
+
+func Test() {
+	t := TestSB{
+		FieldStr: "field_str_value",
+		Field: TestSubSB{
+			FA: "FA_value",
+			FB: "FB_value",
+		},
+	}
+	d, err := json.Marshal(t)
+	if err != nil {
+		log.Fatalf("Failed. Error: %v", err)
+	}
+
+	ta := TestSA{
+		Field: Create(),
+	}
+	d2, err := json.Marshal(ta)
+	if err != nil {
+		log.Fatalf("Failed. Error: %v", err)
+	}
+	err = json.Unmarshal(d, &ta)
+	if err != nil {
+		log.Fatalf("Failed. Error: %v", err)
+	}
+	log.Printf("M1: %v", string(d))
+	log.Printf("M2: %v", string(d2))
+
+	log.Printf("V1: %+v", t)
+	vx, ok := ta.Field.(*TestSubSB)
+	if !ok {
+		log.Fatalf("Failed. Non expected type.")
+	}
+	log.Printf("V2: %+v. V2f: %+v", ta, *vx)
+}
+
+func TestRPC() {
+	rpc.Register(func(path string, handler rpc.HttpRequestHandler) custom_error.CustomError {
+		http.HandleFunc("/"+path, handler)
+		return nil
+	})
+	err := http.ListenAndServe(":3000", nil)
+	if err != nil {
+		log.Fatalf("Failed. Error: %v", err)
+	}
+}
+
 func main() {
+	Test()
+	TestRPC()
+	return
 	ctx := context.Background()
 	client, err := mgo.Connect(ctx, "mongodb://localhost:27030", nil)
 	if err != nil {
