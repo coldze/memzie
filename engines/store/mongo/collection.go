@@ -6,8 +6,11 @@ import (
 	"github.com/coldze/memzie/engines/store"
 	"github.com/coldze/primitives/custom_error"
 	"github.com/mongodb/mongo-go-driver/bson"
-	"github.com/mongodb/mongo-go-driver/core/option"
 	mgo "github.com/mongodb/mongo-go-driver/mongo"
+	"github.com/mongodb/mongo-go-driver/mongo/findopt"
+	"github.com/mongodb/mongo-go-driver/mongo/insertopt"
+	"github.com/mongodb/mongo-go-driver/mongo/deleteopt"
+	"github.com/mongodb/mongo-go-driver/mongo/updateopt"
 )
 
 type CollectionWrap struct {
@@ -16,7 +19,7 @@ type CollectionWrap struct {
 	collection *mgo.Collection
 }
 
-func (c *CollectionWrap) FindOne(decoder store.Decoder, filter map[string]interface{}, opts ...option.FindOneOptioner) (interface{}, custom_error.CustomError) {
+func (c *CollectionWrap) FindOne(decoder store.Decoder, filter map[string]interface{}, opts ...findopt.One) (interface{}, custom_error.CustomError) {
 	ctx := context.Background()
 	res := c.collection.FindOne(ctx, filter, opts...)
 	if res == nil {
@@ -29,7 +32,7 @@ func (c *CollectionWrap) FindOne(decoder store.Decoder, filter map[string]interf
 	return nil, custom_error.NewErrorf(customErr, "Failed to decode. Collname: %v. Db-name: %v", c.collName, c.dbName)
 }
 
-func (c *CollectionWrap) FindAll(decoder store.Decoder, processor func(res interface{}) (bool, custom_error.CustomError), filter map[string]interface{}, opts ...option.FindOptioner) custom_error.CustomError {
+func (c *CollectionWrap) FindAll(decoder store.Decoder, processor func(res interface{}) (bool, custom_error.CustomError), filter map[string]interface{}, opts ...findopt.Find) custom_error.CustomError {
 	ctx := context.Background()
 	cursor, err := c.collection.Find(ctx, filter, opts...)
 	if err != nil {
@@ -59,7 +62,7 @@ func (c *CollectionWrap) FindAll(decoder store.Decoder, processor func(res inter
 	return nil
 }
 
-func (c *CollectionWrap) Create(object interface{}, opts ...option.InsertOneOptioner) (resObjID string, resErr custom_error.CustomError) {
+func (c *CollectionWrap) Create(object interface{}, opts ...insertopt.One) (resObjID string, resErr custom_error.CustomError) {
 	defer func() {
 		r := recover()
 		if r == nil {
@@ -97,7 +100,7 @@ func (c *CollectionWrap) Create(object interface{}, opts ...option.InsertOneOpti
 	return val.ObjectID().Hex(), nil
 }
 
-func (c *CollectionWrap) Delete(filter map[string]interface{}, opts ...option.DeleteOptioner) (bool, custom_error.CustomError) {
+func (c *CollectionWrap) Delete(filter map[string]interface{}, opts ...deleteopt.Delete) (bool, custom_error.CustomError) {
 	ctx := context.Background()
 	res, err := c.collection.DeleteOne(ctx, filter, opts...)
 	if err != nil {
@@ -110,7 +113,7 @@ func (c *CollectionWrap) Delete(filter map[string]interface{}, opts ...option.De
 	return res.DeletedCount > 0, nil
 }
 
-func (c *CollectionWrap) Update(update interface{}, filter map[string]interface{}, opts ...option.UpdateOptioner) (bool, custom_error.CustomError) {
+func (c *CollectionWrap) Update(update interface{}, filter map[string]interface{}, opts ...updateopt.Update) (bool, custom_error.CustomError) {
 	res, err := c.collection.UpdateOne(context.Background(), filter, map[string]interface{}{"$set": update}, opts...)
 	if err != nil {
 		return false, custom_error.MakeErrorf("Failed to update. Error: %v", err)

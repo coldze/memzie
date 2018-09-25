@@ -9,8 +9,8 @@ import (
 	"github.com/coldze/primitives/custom_error"
 	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/mongodb/mongo-go-driver/bson/objectid"
-	"github.com/mongodb/mongo-go-driver/core/option"
 	mgo "github.com/mongodb/mongo-go-driver/mongo"
+	"github.com/mongodb/mongo-go-driver/mongo/findopt"
 )
 
 type logicCollection struct {
@@ -48,9 +48,9 @@ func (c *logicCollection) Next() (store.Word, custom_error.CustomError) {
 		"client_id": c.clientID,
 		"folder_id": c.folderID,
 	}
-	res, customErr := c.underlying.FindOne(c.decoder, filter, option.OptSort{
-		Sort: c.sort,
-	})
+	opts := &findopt.OneBundle{}
+	opts = opts.Sort(c.sort)
+	res, customErr := c.underlying.FindOne(c.decoder, filter, opts)
 	if customErr != nil {
 		return nil, custom_error.NewErrorf(customErr, "Failed to FindOne.")
 	}
